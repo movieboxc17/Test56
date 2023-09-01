@@ -6,16 +6,20 @@
     <title>Live Video on Full Screen with Large Pixels</title>
     <style>
         /* Add your custom CSS for the pixel art style here */
-        html, body {
+        body, html {
             margin: 0;
             padding: 0;
-            height: 100%;
             overflow: hidden;
-        }
-        canvas {
-            image-rendering: pixelated;
             width: 100%;
             height: 100%;
+        }
+        video {
+            object-fit: cover;
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
         }
     </style>
 </head>
@@ -23,14 +27,9 @@
     <!-- Create a video element for the webcam feed -->
     <video id="video" autoplay></video>
 
-    <!-- Create a canvas element for pixelation -->
-    <canvas id="canvas"></canvas>
-
     <script>
         const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const pixelSize = 30; // Set the pixel size to a very large value
+        const pixelSize = 20; // Set the pixel size to a desired value
 
         // Initialize the webcam feed
         async function initCamera() {
@@ -44,24 +43,19 @@
 
         // Function to apply pixelation effect to video frame
         function pixelateFrame() {
+            const canvas = document.createElement('canvas');
+            canvas.width = window.innerWidth / pixelSize;
+            canvas.height = window.innerHeight / pixelSize;
+            const ctx = canvas.getContext('2d');
+            
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             ctx.mozImageSmoothingEnabled = false;
             ctx.webkitImageSmoothingEnabled = false;
             ctx.msImageSmoothingEnabled = false;
             ctx.imageSmoothingEnabled = false;
 
-            // Perform pixelation by resizing the canvas to the smaller pixel size
-            ctx.drawImage(
-                canvas,
-                0,
-                0,
-                canvas.width,
-                canvas.height,
-                0,
-                0,
-                canvas.width / pixelSize,
-                canvas.height / pixelSize
-            );
+            // Draw the pixelated frame on the full screen
+            document.body.style.backgroundImage = `url('${canvas.toDataURL()}')`;
 
             requestAnimationFrame(pixelateFrame);
         }
@@ -69,9 +63,6 @@
         // Initialize the camera and start pixelation
         initCamera().then(() => {
             video.play().then(() => {
-                // Set canvas dimensions to match the screen size
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
                 pixelateFrame();
             });
         });
@@ -82,12 +73,6 @@
                 const tracks = video.srcObject.getTracks();
                 tracks.forEach(track => track.stop());
             }
-        });
-
-        // Handle resizing of the canvas when the window size changes
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
         });
     </script>
 </body>
