@@ -17,17 +17,19 @@
         const ctx = canvasElement.getContext('2d');
         let videoStream = null;
 
-        // Function to start or update the pixelation effect
+        // Function to start the pixelation effect
         function startPixelation(pixelSize) {
             if (videoStream) {
                 const videoElement = document.createElement('video');
                 videoElement.srcObject = videoStream;
 
                 videoElement.onplay = function () {
-                    setInterval(function () {
+                    requestAnimationFrame(function draw() {
+                        // Clear the canvas
+                        ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
                         // Draw the video feed with the chosen pixelation effect
                         ctx.imageSmoothingEnabled = false;
-                        ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
                         ctx.drawImage(videoElement, 0, 0, canvasElement.width / pixelSize, canvasElement.height / pixelSize);
                         ctx.drawImage(
                             canvasElement,
@@ -40,7 +42,10 @@
                             canvasElement.width,
                             canvasElement.height
                         );
-                    }, 100); // Adjust the interval for the desired pixelation effect
+
+                        // Request the next frame
+                        requestAnimationFrame(draw);
+                    });
                 };
 
                 videoElement.play();
