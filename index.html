@@ -3,107 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Split-Screen Live Video</title>
-    <style>
-        /* Add your custom CSS for the pixel art style here */
-        canvas {
-            image-rendering: pixelated;
-            width: 50vw; /* Set canvas width to 50% of viewport width */
-            height: 100vh; /* Set canvas height to 100% of viewport height */
-            float: left; /* Float the canvases left for side-by-side display */
-        }
-    </style>
+    <title>Live Pixelation with Slider</title>
 </head>
 <body>
-    <h1>Split-Screen Live Video</h1>
-
-    <!-- Create two video elements for the webcam feeds -->
-    <video id="video1" width="640" height="480" autoplay></video>
-    <video id="video2" width="640" height="480" autoplay></video>
-
-    <!-- Create two canvas elements for pixelation -->
-    <canvas id="canvas1" width="640" height="480"></canvas>
-    <canvas id="canvas2" width="640" height="480"></canvas>
+    <h1>Live Pixelation with Slider</h1>
+    <input type="range" id="pixelSizeSlider" min="1" max="20" value="10">
+    <br>
+    <canvas id="pixelatedCanvas" width="800" height="600"></canvas>
 
     <script>
-        const video1 = document.getElementById('video1');
-        const video2 = document.getElementById('video2');
-        const canvas1 = document.getElementById('canvas1');
-        const canvas2 = document.getElementById('canvas2');
-        const ctx1 = canvas1.getContext('2d');
-        const ctx2 = canvas2.getContext('2d');
-        const pixelSize = 5; // Set the pixel size to 5x5 for both video feeds
+        const pixelSizeSlider = document.getElementById('pixelSizeSlider');
+        const canvasElement = document.getElementById('pixelatedCanvas');
+        const ctx = canvasElement.getContext('2d');
+        let videoStream = null;
 
-        // Initialize the webcam feeds
-        async function initCamera() {
-            try {
-                const stream1 = await navigator.mediaDevices.getUserMedia({ video: true });
-                const stream2 = await navigator.mediaDevices.getUserMedia({ video: true });
-                video1.srcObject = stream1;
-                video2.srcObject = stream2;
-            } catch (error) {
-                console.error('Error accessing the webcam:', error);
+        // Function to start or update the pixelation effect
+        function startPixelation(pixelSize) {
+            if (videoStream) {
+                const videoElement = document.createElement('video');
+                videoElement.srcObject = videoStream;
+
+                videoElement.onplay = function () {
+                    setInterval(function () {
+                        // Draw the video feed with the chosen pixelation effect
+                        ctx.imageSmoothingEnabled = false;
+                        ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+                        ctx.drawImage(videoElement, 0, 0, canvasElement.width / pixelSize, canvasElement.height / pixelSize);
+                        ctx.drawImage(
+                            canvasElement,
+                            0,
+                            0,
+                            canvasElement.width / pixelSize,
+                            canvasElement.height / pixelSize,
+                            0,
+                            0,
+                            canvasElement.width,
+                            canvasElement.height
+                        );
+                    }, 100); // Adjust the interval for the desired pixelation effect
+                };
+
+                videoElement.play();
             }
         }
 
-        // Function to apply pixelation effect to video frames
-        function pixelateFrames() {
-            ctx1.drawImage(video1, 0, 0, canvas1.width, canvas1.height);
-            ctx2.drawImage(video2, 0, 0, canvas2.width, canvas2.height);
-            ctx1.mozImageSmoothingEnabled = false;
-            ctx1.webkitImageSmoothingEnabled = false;
-            ctx1.msImageSmoothingEnabled = false;
-            ctx1.imageSmoothingEnabled = false;
-            ctx2.mozImageSmoothingEnabled = false;
-            ctx2.webkitImageSmoothingEnabled = false;
-            ctx2.msImageSmoothingEnabled = false;
-            ctx2.imageSmoothingEnabled = false;
+        // Update the pixel size when the slider value changes
+        pixelSizeSlider.addEventListener('input', function () {
+            const pixelSize = this.value;
+            startPixelation(pixelSize);
+        });
 
-            // Perform pixelation by resizing the canvases to the smaller pixel size
-            ctx1.drawImage(
-                canvas1,
-                0,
-                0,
-                canvas1.width,
-                canvas1.height,
-                0,
-                0,
-                canvas1.width / pixelSize,
-                canvas1.height / pixelSize
-            );
-            ctx2.drawImage(
-                canvas2,
-                0,
-                0,
-                canvas2.width,
-                canvas2.height,
-                0,
-                0,
-                canvas2.width / pixelSize,
-                canvas2.height / pixelSize
-            );
-
-            requestAnimationFrame(pixelateFrames);
+        // Access the device camera
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function (stream) {
+                    videoStream = stream;
+                    startPixelation(pixelSizeSlider.value);
+                })
+                .catch(function (error) {
+                    console.error('Error accessing camera:', error);
+                });
+        } else {
+            alert('Your browser does not support getUserMedia');
         }
-
-        // Initialize the cameras and start pixelation
-        initCamera().then(() => {
-            Promise.all([video1.play(), video2.play()]).then(() => {
-                pixelateFrames();
-            });
-        });
-
-        // Stop the animations and close the cameras when the page is unloaded
-        window.addEventListener('beforeunload', () => {
-            if (video1.srcObject) {
-                const tracks1 = video1.srcObject.getTracks();
-                tracks1.forEach(track => track.stop());
-            }
-            if (video2.srcObject) {
-                const tracks2 = video2.srcObject.getTracks();
-                tracks2.forEach(track => track.stop());
-            }
-        });
     </script>
 </body>
 </html>
