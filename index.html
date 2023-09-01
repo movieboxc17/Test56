@@ -1,104 +1,79 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Pixel Grid</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Video with Very Large Pixels</title>
     <style>
-        .pixel-container {
-            display: grid;
-            grid-template-columns: repeat(20, 20px);
-            grid-gap: 1px;
-        }
-
-        .pixel {
-            width: 20px;
-            height: 20px;
-            background-color: white;
-            border: 2px solid #ccc;
-            cursor: pointer;
-        }
-
-        /* Styles for the video modal */
-        .video-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .video-modal-content {
-            position: relative;
-            padding: 20px;
-            background-color: #fff;
-            max-width: 800px;
-        }
-
-        .close-button {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            cursor: pointer;
-        }
-
-        iframe {
-            width: 100%;
-            height: 400px;
+        /* Add your custom CSS for the pixel art style here */
+        canvas {
+            image-rendering: pixelated;
+            width: 1280px; /* Adjust canvas size as needed */
+            height: 960px;
         }
     </style>
 </head>
 <body>
-    <div class="pixel-container">
-        <!-- Create a grid of pixels using JavaScript -->
-    </div>
+    <h1>Live Video with Very Large Pixels</h1>
 
-    <!-- Video modal -->
-    <div class="video-modal" id="videoModal">
-        <div class="video-modal-content">
-            <span class="close-button" id="closeButton">&times;</span>
-            <iframe id="videoFrame" src="" frameborder="0" allowfullscreen></iframe>
-        </div>
-    </div>
+    <!-- Create a video element for the webcam feed -->
+    <video id="video" width="1280" height="960" autoplay></video>
+
+    <!-- Create a canvas element for pixelation -->
+    <canvas id="canvas" width="1280" height="960"></canvas>
 
     <script>
-        const pixelContainer = document.querySelector('.pixel-container');
-        const videoModal = document.getElementById('videoModal');
-        const videoFrame = document.getElementById('videoFrame');
-        const closeButton = document.getElementById('closeButton');
-        const pixelCount = 20 * 20;
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const pixelSize = 30; // Set the pixel size to a very large value
 
-        // Create the grid of pixels
-        for (let i = 0; i < pixelCount; i++) {
-            const pixel = document.createElement('div');
-            pixel.className = 'pixel';
-
-            // Add click event listener to open video modal
-            pixel.addEventListener('click', () => {
-                const videoUrl = prompt('Enter the YouTube video embed URL:');
-                if (videoUrl) {
-                    videoFrame.src = videoUrl;
-                    videoModal.style.display = 'block';
-                }
-            });
-
-            pixelContainer.appendChild(pixel);
+        // Initialize the webcam feed
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+            } catch (error) {
+                console.error('Error accessing the webcam:', error);
+            }
         }
 
-        // Close video modal
-        closeButton.addEventListener('click', () => {
-            videoModal.style.display = 'none';
-            videoFrame.src = '';
+        // Function to apply pixelation effect to video frame
+        function pixelateFrame() {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            ctx.mozImageSmoothingEnabled = false;
+            ctx.webkitImageSmoothingEnabled = false;
+            ctx.msImageSmoothingEnabled = false;
+            ctx.imageSmoothingEnabled = false;
+
+            // Perform pixelation by resizing the canvas to the smaller pixel size
+            ctx.drawImage(
+                canvas,
+                0,
+                0,
+                canvas.width,
+                canvas.height,
+                0,
+                0,
+                canvas.width / pixelSize,
+                canvas.height / pixelSize
+            );
+
+            requestAnimationFrame(pixelateFrame);
+        }
+
+        // Initialize the camera and start pixelation
+        initCamera().then(() => {
+            video.play().then(() => {
+                pixelateFrame();
+            });
         });
 
-        // Close video modal when clicking outside of it
-        window.addEventListener('click', (event) => {
-            if (event.target === videoModal) {
-                videoModal.style.display = 'none';
-                videoFrame.src = '';
+        // Stop the animation and close the camera when the page is unloaded
+        window.addEventListener('beforeunload', () => {
+            if (video.srcObject) {
+                const tracks = video.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
             }
         });
     </script>
