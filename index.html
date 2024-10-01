@@ -12,6 +12,7 @@
             text-align: center;
             margin: 0;
             padding: 20px;
+            overflow: hidden; /* Prevent scrolling */
         }
         h1 {
             margin-bottom: 20px;
@@ -24,10 +25,11 @@
             background-color: #007BFF;
             color: white;
             cursor: pointer;
-            transition: 0.3s;
+            transition: background-color 0.3s, transform 0.3s;
         }
         select:hover, input[type="range"]:hover, button:hover {
             background-color: #0056b3;
+            transform: scale(1.05);
         }
         #pixelatedCanvas {
             border: 1px solid #ffffff;
@@ -36,24 +38,47 @@
             max-width: 800px;
             height: auto;
         }
+        #previewContainer {
+            margin-top: 20px;
+        }
+        #previewCanvas {
+            border: 1px solid #ffffff;
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            display: inline-block;
+        }
+        #controls {
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
     <h1>Live Pixelation with Slider</h1>
-    <select id="cameraSelect"></select>
-    <input type="range" id="pixelSizeSlider" min="1" max="20" value="10">
-    <button id="startButton">Start Pixelation</button>
-    <button id="stopButton">Stop Pixelation</button>
-    <br>
+    <div id="controls">
+        <select id="cameraSelect"></select>
+        <input type="range" id="pixelSizeSlider" min="1" max="20" value="10">
+        <button id="startButton">Start Pixelation</button>
+        <button id="stopButton">Stop Pixelation</button>
+        <button id="fullscreenButton">Toggle Fullscreen</button>
+    </div>
     <canvas id="pixelatedCanvas" width="800" height="600"></canvas>
+    
+    <div id="previewContainer">
+        <h2>Preview Pixelation Effect</h2>
+        <canvas id="previewCanvas" width="800" height="600"></canvas>
+    </div>
 
     <script>
         const pixelSizeSlider = document.getElementById('pixelSizeSlider');
         const canvasElement = document.getElementById('pixelatedCanvas');
+        const previewCanvasElement = document.getElementById('previewCanvas');
         const ctx = canvasElement.getContext('2d');
+        const previewCtx = previewCanvasElement.getContext('2d');
         const cameraSelect = document.getElementById('cameraSelect');
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
+        const fullscreenButton = document.getElementById('fullscreenButton');
         let videoStream = null;
         let videoElement = document.createElement('video');
         let animationFrameId;
@@ -67,6 +92,8 @@
                     const draw = () => {
                         ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
                         ctx.imageSmoothingEnabled = false;
+
+                        // Draw the pixelated video
                         ctx.drawImage(videoElement, 0, 0, canvasElement.width / pixelSize, canvasElement.height / pixelSize);
                         ctx.drawImage(
                             canvasElement,
@@ -79,6 +106,23 @@
                             canvasElement.width,
                             canvasElement.height
                         );
+
+                        // Draw the preview effect in real-time
+                        previewCtx.clearRect(0, 0, previewCanvasElement.width, previewCanvasElement.height);
+                        previewCtx.imageSmoothingEnabled = false;
+                        previewCtx.drawImage(videoElement, 0, 0, previewCanvasElement.width / pixelSize, previewCanvasElement.height / pixelSize);
+                        previewCtx.drawImage(
+                            previewCanvasElement,
+                            0,
+                            0,
+                            previewCanvasElement.width / pixelSize,
+                            previewCanvasElement.height / pixelSize,
+                            0,
+                            0,
+                            previewCanvasElement.width,
+                            previewCanvasElement.height
+                        );
+
                         animationFrameId = requestAnimationFrame(draw);
                     };
                     draw();
@@ -143,6 +187,17 @@
         // Stop pixelation button event
         stopButton.addEventListener('click', () => {
             stopPixelation();
+        });
+
+        // Toggle full-screen mode
+        fullscreenButton.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
         });
 
         // Stop pixelation function
