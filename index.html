@@ -4,10 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Pixelation with Slider</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #2b2b2b;
+            color: #ffffff;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        select, input[type="range"], button {
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+            border: none;
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        select:hover, input[type="range"]:hover, button:hover {
+            background-color: #0056b3;
+        }
+        #pixelatedCanvas {
+            border: 1px solid #ffffff;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+        }
+    </style>
 </head>
 <body>
     <h1>Live Pixelation with Slider</h1>
+    <select id="cameraSelect"></select>
     <input type="range" id="pixelSizeSlider" min="1" max="20" value="10">
+    <button id="startButton">Start Pixelation</button>
+    <button id="stopButton">Stop Pixelation</button>
     <br>
     <canvas id="pixelatedCanvas" width="800" height="600"></canvas>
 
@@ -15,20 +51,21 @@
         const pixelSizeSlider = document.getElementById('pixelSizeSlider');
         const canvasElement = document.getElementById('pixelatedCanvas');
         const ctx = canvasElement.getContext('2d');
+        const cameraSelect = document.getElementById('cameraSelect');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
         let videoStream = null;
+        let videoElement = document.createElement('video');
+        let animationFrameId;
 
         // Function to start the pixelation effect
         function startPixelation(pixelSize) {
             if (videoStream) {
-                const videoElement = document.createElement('video');
                 videoElement.srcObject = videoStream;
 
                 videoElement.onplay = function () {
-                    requestAnimationFrame(function draw() {
-                        // Clear the canvas
+                    const draw = () => {
                         ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-                        // Draw the video feed with the chosen pixelation effect
                         ctx.imageSmoothingEnabled = false;
                         ctx.drawImage(videoElement, 0, 0, canvasElement.width / pixelSize, canvasElement.height / pixelSize);
                         ctx.drawImage(
@@ -42,10 +79,9 @@
                             canvasElement.width,
                             canvasElement.height
                         );
-
-                        // Request the next frame
-                        requestAnimationFrame(draw);
-                    });
+                        animationFrameId = requestAnimationFrame(draw);
+                    };
+                    draw();
                 };
 
                 videoElement.play();
@@ -55,19 +91,74 @@
         // Update the pixel size when the slider value changes
         pixelSizeSlider.addEventListener('input', function () {
             const pixelSize = this.value;
-            startPixelation(pixelSize);
+            if (videoElement.srcObject) {
+                startPixelation(pixelSize);
+            }
         });
 
-        // Access the device camera
+        // Access the device camera and populate the camera selection
+        async function getCameraStream(deviceId) {
+            const constraints = {
+                video: {
+                    facingMode: deviceId === "front" ? "user" : "environment",
+                    deviceId: deviceId !== "all" ? { exact: deviceId } : undefined
+                }
+            };
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoElement.srcObject = videoStream;
+                startPixelation(pixelSizeSlider.value);
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+            }
+        }
+
+        // Populate the camera selection
+        async function populateCameraSelect() {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            devices.forEach(device => {
+                if (device.kind === 'videoinput') {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.text = device.label || `Camera ${cameraSelect.length + 1}`;
+                    cameraSelect.add(option);
+                }
+            });
+            cameraSelect.addEventListener('change', () => {
+                stopPixelation();
+                getCameraStream(cameraSelect.value);
+            });
+        }
+
+        // Start the camera stream on page load
+        populateCameraSelect();
+
+        // Start pixelation button event
+        startButton.addEventListener('click', () => {
+            if (cameraSelect.value) {
+                getCameraStream(cameraSelect.value);
+            }
+        });
+
+        // Stop pixelation button event
+        stopButton.addEventListener('click', () => {
+            stopPixelation();
+        });
+
+        // Stop pixelation function
+        function stopPixelation() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+        }
+
+        // Initial camera access
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(function (stream) {
-                    videoStream = stream;
-                    startPixelation(pixelSizeSlider.value);
-                })
-                .catch(function (error) {
-                    console.error('Error accessing camera:', error);
-                });
+            getCameraStream("front");
         } else {
             alert('Your browser does not support getUserMedia');
         }
